@@ -1,0 +1,45 @@
+version: '2'
+
+volumes:
+  nextcloud:
+  db:
+
+services:
+  db:
+    image: yobasystems/alpine-mariadb:latest
+    command: --transaction-isolation=READ-COMMITTED --binlog-format=ROW
+    restart: always
+    volumes:
+      - db:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=safe_password # Change password
+      - MYSQL_PASSWORD=safe_password # Change password
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=nextcloud
+
+  app:
+    image: nextcloud
+    links:
+      - db
+    volumes:
+      - data:/var/www/html/data
+      - config:/var/www/html/config
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.nextcloud.rule=Host(`nextcloud.example.com`) # Change domain
+      - traefik.http.routers.nextcloud.entrypoints=web
+      - traefik.http.routers.nextcloud.middlewares=redirect@file
+      - traefik.http.routers.nextcloud-secured.rule=Host(`nextcloud.example.com`) # Change domain
+      - traefik.http.routers.nextcloud-secured.entrypoints=web-secured
+      - traefik.http.routers.nextcloud-secured.tls.certresolver=mytlschallenge
+    restart: always
+    networks:
+      - web
+      - default
+
+networks:
+  web:
+    external:
+      name: web
+  default:
+    driver: bridge
